@@ -49,7 +49,7 @@ tryInfect <- function(g, v1, v2, activateProbability) {
   return(w_ij * activateProbability > runif(1))
 }
 
-spreadIndependentCascades <- function(g, initialActivated, activateProbability = 1, maxIterations = 10) {
+spreadIndependentCascades <- function(g, initialActivated, activateProbability = 1, iterationsNb = 10) {
   # activateProbability [0.1; 2]
   # activated - zarażony w ostatniej turze i może teraz zarażać
   # actived - zarażająy w tej turze - od kolejnej nie może już zarażać
@@ -58,13 +58,11 @@ spreadIndependentCascades <- function(g, initialActivated, activateProbability =
   V(g)[initialActivated]$activated <- T
   
   activatedList <- V(g)[initialActivated]
-  newlyActivated <- T
-  iterationsLeft <- maxIterations
+  iterationsLeft <- iterationsNb
   activatedPerIteration <- c()
-  while(iterationsLeft > 0 && newlyActivated) {
-    #cat("Iteration:", maxIterations-iterationsLeft+1, "\n")
+  while(iterationsLeft > 0) {
+    #cat("Iteration:", iterationsNb-iterationsLeft+1, "\n")
     activatedNb <- 0
-    newlyActivated <- F
     oldActivatedList <- activatedList
     activatedList <- V(g)[c()]
     #cat("ACTIVATION LIST:", oldActivatedList, "\n")
@@ -77,7 +75,6 @@ spreadIndependentCascades <- function(g, initialActivated, activateProbability =
           V(g)[n]$activated <- T
           activatedList <- append(activatedList, n)
           activatedNb <- activatedNb + 1
-          newlyActivated <- T
         }
       }
     }
@@ -136,7 +133,7 @@ experimentSpreading <- function(g, initialNb, initialChooseFunction, n = 100, ma
       g = g, 
       initialActivated = initialChooseFunction(g, initialNb), 
       activateProbability = 1, 
-      maxIterations = maxIter
+      iterationsNb = maxIter
     )
     maxLength <- max(maxLength, length(result))
     while (length(result) < maxIter) {
