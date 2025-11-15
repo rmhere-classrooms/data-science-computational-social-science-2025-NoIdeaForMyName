@@ -1,49 +1,50 @@
+library(shiny)
 library(igraph)
+library(bslib)
 
+# Logika aplikacji
 
-# 4.
-setwd("/Users/mmaksanty/Documents/Studia/7 semestr/danologia/lista_5/solution/data-science-computational-social-science-2025-NoIdeaForMyName")
-dfGraph <- read.csv2("css/out.radoslaw_email_email", skip=2, sep= " ")[, 1:2]
-g <- graph.data.frame(dfGraph, directed = T)
-
-
-# 5.
-g <- simplify(g)
-dfGraph <- dfGraph[dfGraph$X1 != dfGraph$X2, ] # usunięcie pętli z grafu
-cat("Liczba węzłów w grafie:", vcount(g))
-cat("Liczba krawędzi w grafie:", ecount(g))
-
-
-# 6.
-dfSummary <- aggregate(
-  rep(1, nrow(dfGraph)), # liczymy po jednym dla każdego wiersza
-  by = list(X1 = dfGraph$X1, X2 = dfGraph$X2),
-  FUN = sum
-)
-names(dfSummary)[3] <- "emailNb"
-head(dfSummary)
-
-
-for (i in seq_along(V(g))) {
-  v <- V(g)[i]
-  cnt_i <- sum(dfSummary$emailNb[dfSummary$X1 == v$name])
-  test <- 0
-  neigh <- neighbors(g, v, mode = "out")
-  for (j in seq_along(neigh)) {
-    v_n <- neigh[j]
-    cnt_ij <- dfSummary$emailNb[dfSummary$X1 == v$name & dfSummary$X2 == v_n$name]
-    w_ij <- cnt_ij / cnt_i
-    E(g)[v %->% v_n]$weight <- w_ij
-    test <- test + w_ij
+loadGraph <- function() {
+  dfGraph <- read.csv2(
+    url("http://bergplace.org/share/out.radoslaw_email_email"),
+    skip = 2, sep = " "
+  )[, 1:2]
+  
+  g <- graph.data.frame(dfGraph, directed = TRUE)
+  g <- simplify(g)
+  
+  dfGraph <- dfGraph[dfGraph$X1 != dfGraph$X2, ]
+  
+  cat("Liczba węzłów w grafie:", vcount(g), "\n")
+  cat("Liczba krawędzi w grafie:", ecount(g), "\n")
+  
+  dfSummary <- aggregate(
+    rep(1, nrow(dfGraph)), # liczymy po jednym dla każdego wiersza
+    by = list(X1 = dfGraph$X1, X2 = dfGraph$X2),
+    FUN = sum
+  )
+  names(dfSummary)[3] <- "emailNb"
+  
+  for (i in seq_along(V(g))) {
+    v <- V(g)[i]
+    cnt_i <- sum(dfSummary$emailNb[dfSummary$X1 == v$name])
+    test <- 0
+    neigh <- neighbors(g, v, mode = "out")
+    for (j in seq_along(neigh)) {
+      v_n <- neigh[j]
+      cnt_ij <- dfSummary$emailNb[dfSummary$X1 == v$name & dfSummary$X2 == v_n$name]
+      w_ij <- cnt_ij / cnt_i
+      E(g)[v %->% v_n]$weight <- w_ij
+      test <- test + w_ij
+    }
+    if (test < 0.99 && test > 0.01) { # test poprawności obliczeń
+      cat("TEST:", test, "; ")
+      cat("V I", i, "V", v, "N", neigh, "\n")
+    }
   }
-  if (test < 0.99 && test > 0.01) { # test poprawności obliczeń
-    cat("TEST:", test, "; ")
-    cat("V I", i, "V", v, "N", neigh, "\n")
-  }
+  return(g)
 }
 
-
-# 7.
 tryInfect <- function(g, v1, v2, activateProbability) {
   w_ij <- E(g)[v1 %->% v2]$weight
   return(w_ij * activateProbability > runif(1))
@@ -86,9 +87,7 @@ spreadIndependentCascades <- function(g, initialActivated, activateProbability =
   return(activatedPerIteration)
 }
 
-
-# 8.
-
+# Strategie wyboru węzłów początkowych
 # I - max outdegree
 chooseMaxDegree <- function(g, nb) {
   outdeg <- degree(g, mode = "out")
@@ -123,16 +122,15 @@ chooseMaxPagerank <- function(g, nb) {
   return(V(g)[top_indices])
 }
 
-
 # EXPERIMENTING...
-experimentSpreading <- function(g, initialNb, initialChooseFunction, n = 100, maxIter = 10) {
+experimentSpreading <- function(g, initialNb, initialChooseFunction, n = 100, maxIter = 10, activProb) {
   infectedIterationsList = list()
   maxLength <- 0
   for (i in 1:n) {
     result <- spreadIndependentCascades(
       g = g, 
       initialActivated = initialChooseFunction(g, initialNb), 
-      activateProbability = 1, 
+      activateProbability = activProb, 
       iterationsNb = maxIter
     )
     maxLength <- max(maxLength, length(result))
@@ -146,79 +144,105 @@ experimentSpreading <- function(g, initialNb, initialChooseFunction, n = 100, ma
   return(finalResult)
 }
 
-fullExperiment <- function(g, initialNb, chooseFunctionList, n = 5, maxIter = 10) {
+runFullExperiment <- function(g, initialNb, activProb, iterNb, n = 5) {
+  chooseFunctionList <- list(
+    "max degree"      = chooseMaxDegree,
+    "max betweenness" = chooseMaxBetweenness,
+    "max closeness"   = chooseMaxCloseness,
+    "random"          = chooseRandom,
+    "max pagerank"    = chooseMaxPagerank
+  )
   
   results <- list()
-  
   for (name in names(chooseFunctionList)) {
     cat("Eksperyment dla", name, "\n")
-    chooseFunc <- chooseFunctionList[[name]]
-    result <- experimentSpreading(
+    results[[name]] <- experimentSpreading(
       g = g,
       initialNb = initialNb,
-      initialChooseFunction = chooseFunc,
+      initialChooseFunction = chooseFunctionList[[name]],
       n = n,
-      maxIter = maxIter
+      maxIter = iterNb,
+      activProb = activProb
     )
-    results[[name]] <- result
   }
   
-  # Rysowanie wykresu (1. seria danych)
-  allValues <- unlist(results)
-  minY <- min(allValues)
-  maxY <- max(allValues)
-  
-  firstName <- names(results)[1]
-  firstData <- results[[firstName]]
-  
-  plot(
-    x = 1:length(firstData),
-    y = firstData,
-    type = "l",
-    col = 1,
-    lwd = 2,
-    xlab = "Iteracja",
-    ylab = "Liczba aktywowanych węzłów",
-    main = "Przebieg dyfuzji informacji",
-    ylim = c(minY, maxY) 
-  )
-  
-  # Kolejne serie
-  i <- 2
-  for (name in names(results)[-1]) {
-    lines(
-      1:length(results[[name]]), 
-      results[[name]], 
-      col = i, 
-      lwd = 2
-    )
-    i <- i + 1
-  }
-  
-  # Legenda
-  legend(
-    "topright",
-    legend = names(results),
-    col = 1:length(results),
-    lwd = 2,
-  )
-  
+  return(results)
 }
 
-initialInfectedNb <- 0.05 * vcount(g) # 5% wszystkich wierzchołków
-chooseFunctionList <- list(
-  "max degree" = chooseMaxDegree,
-  "max betweenness" = chooseMaxBetweenness,
-  "max closeness" = chooseMaxCloseness,
-  "random" = chooseRandom,
-  "max pagerank" = chooseMaxPagerank
+# ShinyApp User Interface
+
+ui <- page_sidebar(
+  title = "Rozprzestrzenianie się informacji w sieciach",
+  sidebar = sidebar(
+    sliderInput(
+      inputId = "activProbId",
+      label = "Prawdopodobieństwo aktywacji:",
+      min = 1,
+      max = 200,
+      value = 100,
+      post = "%"
+    ),
+    
+    sliderInput(
+      inputId = "iterNbId",
+      label = "Liczba iteracji:",
+      min = 1,
+      max = 50,
+      value = 10
+    )
+  ),
+  plotOutput(outputId = "diffusionPlot")
 )
 
-fullExperiment(
-  g = g, 
-  initialNb = initialInfectedNb, 
-  chooseFunctionList = chooseFunctionList, 
-  n = 5, 
-  maxIter = 10
-)
+# ShinyApp Server
 
+server <- function(input, output, session) {
+  
+  g <- loadGraph()   # początkowe ładowanie grafu
+  
+  output$diffusionPlot <- renderPlot({
+    
+    activateProb <- input$activProbId / 100
+    iterNb <- input$iterNbId
+    initialNb <- max(1, round(0.05 * vcount(g)))  # 5% wierzchołków
+    
+    results <- runFullExperiment(
+      g = g,
+      initialNb = initialNb,
+      activProb = activateProb,
+      iterNb = iterNb,
+      n = 1 # 5
+    )
+    
+    allValues <- unlist(results)
+    plot(
+      1:iterNb, 
+      results[[1]], 
+      type = "l", 
+      lwd = 2,
+      ylim = c(min(allValues), max(allValues)),
+      xlab = "Iteracja", ylab = "Aktywowane węzły",
+      main = "Dyfuzja informacji"
+    )
+    
+    colIndex <- 2
+    for (name in names(results)[-1]) {
+      lines(
+        1:iterNb, 
+        results[[name]], 
+        lwd = 2, 
+        col = colIndex
+      )
+      colIndex <- colIndex + 1
+    }
+    
+    legend(
+      "topright",
+      legend = names(results),
+      col = 1:length(results),
+      lwd = 2
+    )
+  })
+}
+
+shinyApp(ui = ui, server = server)
