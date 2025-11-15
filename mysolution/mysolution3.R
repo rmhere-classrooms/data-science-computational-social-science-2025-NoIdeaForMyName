@@ -183,7 +183,7 @@ ui <- page_sidebar(
     sliderInput(
       inputId = "activProbId",
       label = "Prawdopodobieństwo aktywacji:",
-      min = 1,
+      min = 10,
       max = 200,
       value = 100,
       post = "%"
