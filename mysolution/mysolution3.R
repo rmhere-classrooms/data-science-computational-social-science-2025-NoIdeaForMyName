@@ -1,6 +1,7 @@
 library(shiny)
 library(igraph)
 library(bslib)
+library(memoise)
 
 # Logika aplikacji
 
@@ -45,43 +46,60 @@ loadGraph <- function() {
   return(g)
 }
 
-tryInfect <- function(g, v1, v2, activateProbability) {
-  w_ij <- E(g)[v1 %->% v2]$weight
+tryInfect <- function(w_ij, activateProbability) {
   return(w_ij * activateProbability > runif(1))
 }
+
+get_neighbors_list_helper <- (function (g, n) lapply(1:n, function(i) neighbors(g, i, mode = "out")))
+get_neighbors_list <- memoise(get_neighbors_list_helper)
+
+get_edge_weights_helper <- function(g, n) {
+  edge_weights <- matrix(0, n, n)
+  edges <- as_edgelist(g, names = FALSE)
+  weights <- E(g)$weight
+  for (i in seq_len(nrow(edges))) {
+    edge_weights[edges[i,1], edges[i,2]] <- weights[i]
+  }
+  return(edge_weights)
+}
+get_edge_weights <- memoise(get_edge_weights_helper)
 
 spreadIndependentCascades <- function(g, initialActivated, activateProbability = 1, iterationsNb = 10) {
   # activateProbability [0.1; 2]
   # activated - zarażony w ostatniej turze i może teraz zarażać
   # actived - zarażająy w tej turze - od kolejnej nie może już zarażać
-  V(g)$activated <- F
-  V(g)$actived <- F
-  V(g)[initialActivated]$activated <- T
   
-  activatedList <- V(g)[initialActivated]
-  iterationsLeft <- iterationsNb
-  activatedPerIteration <- c()
-  while(iterationsLeft > 0) {
-    #cat("Iteration:", iterationsNb-iterationsLeft+1, "\n")
+  n <- vcount(g)
+  
+  activated <- logical(n)
+  actived <- logical(n)
+  activated[initialActivated] <- TRUE
+
+  neighbors_list <- get_neighbors_list(g, n)
+  edge_weights <- get_edge_weights(g, n)
+
+  activatedList <- initialActivated
+  activatedPerIteration <- integer(0)
+  for (iter in 1:iterationsNb) {
     activatedNb <- 0
     oldActivatedList <- activatedList
-    activatedList <- V(g)[c()]
-    #cat("ACTIVATION LIST:", oldActivatedList, "\n")
+    activatedList <- integer(0)
     for (spreader in oldActivatedList) {
-      V(g)[spreader]$actived <- T
-      neighbors_out <- neighbors(g, spreader, mode = "out")
+      actived[spreader] <- T
+      neighbors_out <- neighbors_list[[spreader]]
       for (n in neighbors_out) {
-        if (!V(g)[n]$activated && !V(g)[n]$actived && tryInfect(g, spreader, n, activateProbability)) {
-          #cat("spreading!", "\n")
-          V(g)[n]$activated <- T
-          activatedList <- append(activatedList, n)
-          activatedNb <- activatedNb + 1
+        if (!activated[n] && !actived[n]) {
+          w_ij <- edge_weights[spreader, n]
+          if (tryInfect(w_ij, activateProbability)) {
+            activated[n] <- T
+            activatedList <- c(activatedList, n)
+            activatedNb <- activatedNb + 1
+          }
         }
       }
     }
-    
-    iterationsLeft <- iterationsLeft - 1
-    activatedPerIteration <- c(activatedPerIteration, activatedNb)
+
+    activatedPerIteration[iter] <-  activatedNb
   }
   
   return(activatedPerIteration)
@@ -150,7 +168,7 @@ experimentSpreading <- function(g, initialNb, initialChooseFunction, n = 100, ma
   return(finalResult)
 }
 
-runFullExperiment <- function(g, initialNb, activProb, iterNb, n = 5) {
+runFullExperiment <- function(g, initialNb, activProb, iterNb, n = 100) {
   chooseFunctionList <- list(
     "max degree"          = chooseMaxDegree,
     "max betweenness"     = chooseMaxBetweenness,
@@ -217,7 +235,7 @@ server <- function(input, output, session) {
       initialNb = initialNb,
       activProb = activateProb,
       iterNb = iterNb,
-      n = 1 # 5
+      n = 100
     )
     
     allValues <- unlist(results)
