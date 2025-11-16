@@ -272,9 +272,16 @@ server <- function(input, output, session) {
       results[[1]], 
       type = "l", 
       lwd = 2,
+      col = 1,
       ylim = c(min(all_values), max(all_values)),
       xlab = "Iteracja", ylab = "Aktywowane węzły",
       main = "Dyfuzja informacji"
+    )
+    points(
+      1:iter_nb, 
+      results[[1]], 
+      pch = 19,
+      col = 1
     )
     
     col_index <- 2
@@ -285,6 +292,12 @@ server <- function(input, output, session) {
         lwd = 2, 
         col = col_index
       )
+      points(
+        1:iter_nb,
+        results[[name]],
+        col = col_index,
+        pch = 19
+      )
       col_index <- col_index + 1
     }
     
@@ -292,7 +305,8 @@ server <- function(input, output, session) {
       "topright",
       legend = names(results),
       col = 1:length(results),
-      lwd = 2
+      lwd = 2,
+      pch = 19
     )
   })
 }
