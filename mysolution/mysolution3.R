@@ -17,8 +17,8 @@ loadGraph <- function() {
   
   df_graph <- df_graph[df_graph$X1 != df_graph$X2, ]
   
-  cat("Liczba węzłów w grafie:", vcount(g), "\n")
-  cat("Liczba krawędzi w grafie:", ecount(g), "\n")
+  #cat("Liczba węzłów w grafie:", vcount(g), "\n")
+  #cat("Liczba krawędzi w grafie:", ecount(g), "\n")
   
   df_summary <- aggregate(
     rep(1, nrow(df_graph)), # liczymy po jednym dla każdego wiersza
@@ -59,18 +59,18 @@ loadGraph <- function() {
   E(g)$weight <- weights
   
   # Test poprawności przypisanych wag
-  cat("Test poprawności...", "\n")
+  #cat("Test poprawności...", "\n")
   for (v in V(g)) {
     v_name <- V(g)$name[v]
     outgoing <- incident(g, v, mode = "out")
     if (length(outgoing) > 0) {
       total_weight <- sum(E(g)$weight[outgoing])
       if (total_weight < 0.99999) { # Poprawka ze względu na błędy zmiennoprzecinkowe
-        cat("TEST FAILED: vertex", v_name, "sum =", total_weight, "\n")
+        warning("WEIGHT TEST FAILED: vertex", v_name, "sum =", total_weight, "\n")
       }
     }
   }
-  cat("Koniec testu...", "\n")
+  #cat("Koniec testu...", "\n")
   
   return(g)
 }
@@ -207,7 +207,7 @@ runFullExperiment <- function(g, initial_nb, activ_prob, iter_nb, n = 100) {
   
   results <- list()
   for (name in names(chooseFunctionList)) {
-    cat("Eksperyment dla", name, "\n")
+    #cat("Eksperyment dla", name, "\n")
     results[[name]] <- experimentSpreading(
       g = g,
       initial_nb = initial_nb,
