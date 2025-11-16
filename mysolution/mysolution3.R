@@ -163,12 +163,11 @@ chooseRandom <- function(g, nb) {
 
 # V - reversed max pageRank
 # Odwrócony PageRank oblicza klasyczną miarę, ale na grafie z odwróconymi 
-# kierunkami krawędzi, dzięki czemu wskazuje węzły mające duży wpływ 
-# „na zewnątrz”, czyli silnie oddziałujące na inne. W takim ujęciu wysoką 
-# wartość otrzymują te węzły, które w oryginalnym grafie mają wiele lub ważne 
-# połączenia wychodzące, co czyni je dobrymi starterami do rozprzestrzeniania 
-# informacji. Dzięki temu miara lepiej pasuje do modeli dyfuzji w sieciach 
-# kierunkowych niż klasyczny PageRank.
+# kierunkami krawędzi, dzięki czemu wskazuje na węzły mające wiele połączeń
+# na zewnątrz (do innych "ważnych" węzłów, które w odwróconej wersji 
+# wskazywały na te węzły). Ta właściwość czyni je dobrymi punktami 
+# początkowymi do rozprzestrzeniania informacji. Dzięki temu miara lepiej 
+# pasuje do modeli dyfuzji w sieciach kierunkowych niż klasyczny PageRank
 chooseReversedMaxPagerank <- function(g, nb) {
   pr <- page_rank(reverse_edges(g), directed = TRUE)$vector
   top_indices <- order(pr, decreasing = TRUE)[1:nb]
