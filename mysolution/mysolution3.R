@@ -26,23 +26,51 @@ loadGraph <- function() {
   )
   names(dfSummary)[3] <- "emailNb"
   
-  for (i in seq_along(V(g))) {
-    v <- V(g)[i]
-    cnt_i <- sum(dfSummary$emailNb[dfSummary$X1 == v$name])
-    test <- 0
-    neigh <- neighbors(g, v, mode = "out")
-    for (j in seq_along(neigh)) {
-      v_n <- neigh[j]
-      cnt_ij <- dfSummary$emailNb[dfSummary$X1 == v$name & dfSummary$X2 == v_n$name]
-      w_ij <- cnt_ij / cnt_i
-      E(g)[v %->% v_n]$weight <- w_ij
-      test <- test + w_ij
-    }
-    if (test < 0.99 && test > 0.01) { # test poprawności obliczeń
-      cat("TEST:", test, "; ")
-      cat("V I", i, "V", v, "N", neigh, "\n")
+  # Sumy dla każdego wierzchołka
+  vertex_totals <- aggregate(
+    emailNb ~ X1, 
+    data = dfSummary, 
+    FUN = sum
+  )
+  names(vertex_totals)[2] <- "total_emails"
+
+  email_lookup <- dfSummary
+  vertex_lookup <- vertex_totals
+  
+  edges <- as_edgelist(g)
+  
+  # Wektor wag
+  weights <- numeric(ecount(g))
+  
+  for (i in 1:ecount(g)) {
+    from_node <- edges[i, 1]
+    to_node <- edges[i, 2]
+    
+    # Liczba maili między określonymi węzłami
+    email_count <- email_lookup[email_lookup$X1 == from_node & email_lookup$X2 == to_node, "emailNb"]
+
+    # Liczba maili z węzła wychodzącego
+    total_emails <- vertex_lookup[vertex_lookup$X1 == from_node, "total_emails"]
+
+    weights[i] <- email_count / total_emails
+  }
+  
+  E(g)$weight <- weights
+  
+  # Test poprawności przypisanych wag
+  cat("Test poprawności...", "\n")
+  for (v in V(g)) {
+    v_name <- V(g)$name[v]
+    outgoing <- incident(g, v, mode = "out")
+    if (length(outgoing) > 0) {
+      total_weight <- sum(E(g)$weight[outgoing])
+      if (total_weight < 0.99999) { # Poprawka ze względu na błędy zmiennoprzecinkowe
+        cat("TEST FAILED: vertex", v_name, "sum =", total_weight, "\n")
+      }
     }
   }
+  cat("Koniec testu...", "\n")
+  
   return(g)
 }
 
