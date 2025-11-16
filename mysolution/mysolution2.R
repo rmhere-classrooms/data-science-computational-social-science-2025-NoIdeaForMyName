@@ -1,12 +1,11 @@
-"
-1. Plik z rozwiązaniem nazwij mysolution/mysolution2.R (lub inne rozszerzenie, zależnie
-od języka programowania).
-2. Wygeneruj graf wedle modelu Barabási-Albert z tysiącem węzłów
-3. Zwizualizuj graf layoutem Fruchterman & Reingold
-4. Znajdź najbardziej centralny węzeł według miary betweenness, jaki ma numer?
-5. Jaka jest średnica grafu?
-6. W komentarzu napisz czym różnią się grafy Barabási-Albert i Erdős-Rényi.
-"
+# 1. Plik z rozwiązaniem nazwij mysolution/mysolution2.R (lub inne rozszerzenie, zależnie
+# od języka programowania).
+# 2. Wygeneruj graf wedle modelu Barabási-Albert z tysiącem węzłów
+# 3. Zwizualizuj graf layoutem Fruchterman & Reingold
+# 4. Znajdź najbardziej centralny węzeł według miary betweenness, jaki ma numer?
+# 5. Jaka jest średnica grafu?
+# 6. W komentarzu napisz czym różnią się grafy Barabási-Albert i Erdős-Rényi.
+
 
 library(igraph)
 
@@ -23,22 +22,22 @@ most_central_v <- V(g)[betweenness(g)==max(betweenness(g))]
 cat("Najbadziej centralny węzeł według miary betweenness ma numer:", most_central_v, "\n")
 
 # 5.
-cat("Średnica grafu to:", diameter(g))
+cat("Średnica grafu to:", diameter(g), "\n")
 
 # 6.
-"
-Grafy Erdős-Rényi i Barabási-Albert różnią się zasadniczo sposobem generowania 
-połączeń między węzłami. 
 
-W modelu Erdős-Rényi każda możliwa krawędź powstaje losowo i niezależnie 
-z jednakowym prawdopodobieństwem, co prowadzi do grafów o równomiernym 
-rozkładzie stopni węzłów i niskiej klasteryzacji. 
+# Grafy Erdős-Rényi i Barabási-Albert różnią się zasadniczo sposobem generowania 
+# połączeń między węzłami. 
 
-Z kolei grafy Barabási-Albert powstają w procesie preferencyjnego przyłączania 
-nowych węzłów do już dobrze połączonych węzłów (takich o wysokim stopniu), 
-co skutkuje powstaniem tzw. hubów.
+# W modelu Erdős-Rényi każda możliwa krawędź powstaje losowo i niezależnie 
+# z jednakowym prawdopodobieństwem, co prowadzi do grafów o równomiernym 
+# rozkładzie stopni węzłów i niskiej klasteryzacji. 
 
-Podsumowując, w sieciach Barabási-Albert występują centralne, 
-silnie połączone węzły, podczas gdy grafy Erdős-Rényi są bardziej jednorodne 
-i nie mają wyraźnych hubów.
-"
+# Z kolei grafy Barabási-Albert powstają w procesie preferencyjnego przyłączania 
+# nowych węzłów do już dobrze połączonych węzłów (takich o wysokim stopniu), 
+# co skutkuje powstaniem tzw. hubów.
+
+# Podsumowując, w sieciach Barabási-Albert występują centralne, 
+# silnie połączone węzły, podczas gdy grafy Erdős-Rényi są bardziej jednorodne 
+# i nie mają wyraźnych hubów.
+
